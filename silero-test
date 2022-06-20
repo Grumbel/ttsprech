@@ -5,8 +5,8 @@ from typing import List
 
 import argparse
 import os
-import torch
 import sys
+import torch
 
 from xdg.BaseDirectory import xdg_cache_home
 
@@ -64,7 +64,7 @@ def main(argv: List[str]) -> None:
             torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
 
     device = torch.device('cpu')
-    torch.set_num_threads(4)
+    torch.set_num_threads(torch.multiprocessing.cpu_count())
 
     model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
     model.to(device)
