@@ -1,0 +1,61 @@
+{
+  "nodes": {
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1653893745,
+        "narHash": "sha256-0jntwV3Z8//YwuOjzhV2sgJJPt+HY6KhU7VZUL0fKZQ=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "1ed9fb1935d260de5fe1c2f7ee0ebaae17ed2fa1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1655456688,
+        "narHash": "sha256-j2trI5gv2fnHdfUQFBy957avCPxxzCqE8R+TOYHPSRE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d17a56d90ecbd1b8fc908d49598fb854ef188461",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-22.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "silero-src": "silero-src"
+      }
+    },
+    "silero-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655058837,
+        "narHash": "sha256-38A3lTDzZ6h7M7epA2tZiCr4jf7MSG/+eyeSevwfcrc=",
+        "owner": "snakers4",
+        "repo": "silero-models",
+        "rev": "555024c76503a8e52d68f829f3bb5352553c2fd7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "snakers4",
+        "ref": "v0.4.1",
+        "repo": "silero-models",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

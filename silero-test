@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+
+from typing import List
+
+import argparse
+import os
+import torch
+import sys
+
+
+MODEL_FILE = 'model.pt'
+
+
+def parse_args(args: List[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Text to Speech")
+    group_ex = parser.add_mutually_exclusive_group()
+    group_ex.add_argument("-t", "--text", metavar="TETX", type=str, default=None,
+                        help="Convert TEXT to wav")
+    group_ex.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
+                          help="Convert content of FILE to wav")
+    parser.add_argument("-m", "--model", metavar="FILE", type=str, default=MODEL_FILE,
+                        help="Model file to use ")
+    parser.add_argument("-s", "--speaker", metavar="SPEAKER", type=str, default="en_0",
+                        help="Speaker to use")
+    parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
+                        help="Sample rate")
+    parser.add_argument("-o", "--output", metavar="FILE", type=str, default=None,
+                        help="Write wave to FILE")
+    return parser.parse_args(args)
+
+
+def main(argv: List[str]):
+    opts = parse_args(argv[1:])
+
+    if opts.output is None:
+        raise RuntimeError("--output PATH required")
+
+    device = torch.device('cpu')
+    torch.set_num_threads(4)
+
+    model = torch.package.PackageImporter(opts.model).load_pickle("tts_models", "model")
+    model.to(device)
+
+    print(f"Model: {opts.model}")
+    print(f"Speakers: {model.speakers}")
+
+    if opts.file:
+        with open(opts.file) as fin:
+            text = fin.read()
+            if len(text) > 1000:
+                print("error: file larger than 1000 charcters, truncating",file=sys.stderr)
+            text = text[0:1000]
+    else:
+        text = opts.text
+
+    audio_path = model.save_wav(audio_path=opts.output,
+                                text=text,
+                                speaker=opts.speaker,
+                                sample_rate=opts.rate)
+    print(f"Written: {audio_path}")
+
+
+if __name__ == "__main__":
+    main(sys.argv)
+
+
+# EOF #
