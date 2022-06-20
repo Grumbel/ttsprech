@@ -7,7 +7,6 @@ import argparse
 import os
 import sys
 import torch
-
 from xdg.BaseDirectory import xdg_cache_home
 
 
@@ -21,6 +20,20 @@ LANGUAGE_MODEL_URLS = {
     'xal': "https://models.silero.ai/models/tts/xal/v3_xal.pt",
     'indic': "https://models.silero.ai/models/tts/indic/v3_indic.pt",
 }
+
+
+NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_PLACEHOLDER"
+
+
+def split_sentences(text: str) -> List[str]:
+    NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
+    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
+        import nltk
+        tokenize = nltk.data.load(os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle'))
+        return tokenize.sentences_from_text(text)
+    else:
+        print("warning: NLTK_DATA_PUNKT_DIR not set, treating text as one sentence", file=sys.stderr)
+        return [text]
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
@@ -81,19 +94,22 @@ def main(argv: List[str]) -> None:
     if opts.file:
         with open(opts.file) as fin:
             text = fin.read()
-            if len(text) > 1000:
-                print("error: file larger than 1000 charcters, truncating", file=sys.stderr)
-            text = text[0:1000]
     else:
         text = opts.text
 
     if text is None:
         raise RuntimeError("no text given")
 
-    audio_path = model.save_wav(audio_path=opts.output,
-                                text=text,
-                                speaker=speaker,
-                                sample_rate=opts.rate)
+    outfile_root, outfile_ext = os.path.splitext(opts.output)
+    sentences = split_sentences(text)
+
+    for idx, sentence in enumerate(sentences):
+        outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+        print(f"Processing {outfile}: {sentence!r}")
+        audio_path = model.save_wav(audio_path=outfile,
+                                    text=sentence,
+                                    speaker=speaker,
+                                    sample_rate=opts.rate)
     print(f"Written: {audio_path}")
 
 

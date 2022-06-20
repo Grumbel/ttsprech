@@ -36,12 +36,22 @@
             ];
           };
 
+          nltk_data_punkt = pkgs.fetchzip {
+            url = "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt.zip";
+            hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
+          };
+
           silero-test = pkgs.python3Packages.buildPythonPackage rec {
             pname = "silero-test";
             version = "0.0.0";
             src = ./.;
+            patchPhase = ''
+              substituteInPlace silero-test --replace \
+                "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}"
+            '';
             propagatedBuildInputs = with pkgs; [
               silero
+              python3Packages.nltk
               python3Packages.pyxdg
             ];
           };
