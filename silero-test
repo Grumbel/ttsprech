@@ -5,8 +5,11 @@ from typing import List
 
 import argparse
 import os
+import queue
+import simpleaudio
 import sys
 import torch
+from threading import Thread
 from xdg.BaseDirectory import xdg_cache_home
 
 
@@ -23,6 +26,35 @@ LANGUAGE_MODEL_URLS = {
 
 
 NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_PLACEHOLDER"
+
+
+class Player:
+
+    def __init__(self) -> None:
+        self.queue = queue.Queue()
+        self.wave_obj = None
+        self.play_obj = None
+        self.thread = Thread(target=lambda: self.run())
+        self.thread.start()
+
+    def add(self, filename: str) -> None:
+        print(f"Player.add: {filename}")
+        self.queue.put(filename)
+
+    def quit(self) -> None:
+        print(f"Player.quit")
+        self.queue.put(None)
+        self.thread.join()
+
+    def run(self):
+        print("Player started")
+        while True:
+            wave_file = self.queue.get()
+            if wave_file is None:
+                break
+            self.wave_obj = simpleaudio.WaveObject.from_wave_file(wave_file)
+            self.play_obj = self.wave_obj.play()
+            self.play_obj.wait_done()
 
 
 def split_sentences(text: str) -> List[str]:
@@ -51,6 +83,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
+    parser.add_argument("-p", "--play", action='store_true', default=False,
+                        help="Play the generated wav")
     parser.add_argument("-o", "--output", metavar="FILE", type=str, default=None,
                         help="Write wave to FILE")
     return parser.parse_args(args)
@@ -103,6 +137,11 @@ def main(argv: List[str]) -> None:
     outfile_root, outfile_ext = os.path.splitext(opts.output)
     sentences = split_sentences(text)
 
+    if opts.play:
+        player = Player()
+    else:
+        player = None
+
     for idx, sentence in enumerate(sentences):
         outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
         print(f"Processing {outfile}: {sentence!r}")
@@ -110,7 +149,13 @@ def main(argv: List[str]) -> None:
                                     text=sentence,
                                     speaker=speaker,
                                     sample_rate=opts.rate)
-    print(f"Written: {audio_path}")
+        print(f"Written: {audio_path}")
+
+        if player is not None:
+            player.add(audio_path)
+
+    if opts.play:
+        player.quit()
 
 
 if __name__ == "__main__":
