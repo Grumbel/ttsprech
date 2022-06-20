@@ -145,14 +145,18 @@ def main(argv: List[str]) -> None:
     for idx, sentence in enumerate(sentences):
         outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
         print(f"Processing {outfile}: {sentence!r}")
-        audio_path = model.save_wav(audio_path=outfile,
-                                    text=sentence,
-                                    speaker=speaker,
-                                    sample_rate=opts.rate)
-        print(f"Written: {audio_path}")
+        try:
+            audio_path = model.save_wav(audio_path=outfile,
+                                        text=sentence,
+                                        speaker=speaker,
+                                        sample_rate=opts.rate)
+            if player is not None:
+                player.add(audio_path)
 
-        if player is not None:
-            player.add(audio_path)
+            print(f"Written: {audio_path}")
+        except Exception as err:
+            # ValueError() is thrown when the sentence only contains numbers
+            print(f"error: failed to process {sentence!r}: {err!r}")
 
     if opts.play:
         player.quit()
