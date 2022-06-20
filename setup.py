@@ -1,4 +1,2 @@
-from setuptools import setup, find_packages
-setup(
-    scripts=['silero-test'],
-)
+from setuptools import setup
+setup(use_scm_version=True)
