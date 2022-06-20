@@ -16,10 +16,6 @@
         };
       in rec {
         packages = flake-utils.lib.flattenTree rec {
-          silero-model-v3_en = pkgs.fetchurl {
-            url = "https://models.silero.ai/models/tts/en/v3_en.pt";
-            hash = "sha256-ArcQNNnxO8QAEZUBe6ydsca7YRXgP+pSmD6KvP8TtmU=";
-          };
           silero = pkgs.python3Packages.buildPythonPackage rec {
             pname = "silero";
             version = "0.4.1";
@@ -39,16 +35,14 @@
               python3Packages.omegaconf
             ];
           };
+
           silero-test = pkgs.python3Packages.buildPythonPackage rec {
             pname = "silero-test";
             version = "0.0.0";
             src = ./.;
-            patchPhase = ''
-              substituteInPlace silero-test --replace \
-                "'model.pt'" "'${silero-model-v3_en}'"
-            '';
             propagatedBuildInputs = with pkgs; [
               silero
+              python3Packages.pyxdg
             ];
           };
         };

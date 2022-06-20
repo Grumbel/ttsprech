@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 from typing import List
 
 import argparse
@@ -7,8 +8,19 @@ import os
 import torch
 import sys
 
+from xdg.BaseDirectory import xdg_cache_home
 
-MODEL_FILE = 'model.pt'
+
+LANGUAGE_MODEL_URLS = {
+    'en':  "https://models.silero.ai/models/tts/en/v3_en.pt",
+    'de': "https://models.silero.ai/models/tts/de/v3_de.pt",
+    'pt': "https://models.silero.ai/models/tts/es/v3_es.pt",
+    'fr': "https://models.silero.ai/models/tts/fr/v3_fr.pt",
+    'ua': "https://models.silero.ai/models/tts/ua/v3_ua.pt",
+    'uz': "https://models.silero.ai/models/tts/uz/v3_uz.pt",
+    'xal': "https://models.silero.ai/models/tts/xal/v3_xal.pt",
+    'indic': "https://models.silero.ai/models/tts/indic/v3_indic.pt",
+}
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
@@ -18,9 +30,11 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Convert TEXT to wav")
     group_ex.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                           help="Convert content of FILE to wav")
-    parser.add_argument("-m", "--model", metavar="FILE", type=str, default=MODEL_FILE,
+    parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
                         help="Model file to use ")
-    parser.add_argument("-s", "--speaker", metavar="SPEAKER", type=str, default="en_0",
+    parser.add_argument("-l", "--lang", metavar="LANGUAGE", type=str, default='en',
+                        help="Use language LANGUAGE")
+    parser.add_argument("-s", "--speaker", metavar="SPEAKER", type=str, default=None,
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
@@ -29,33 +43,56 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def main(argv: List[str]):
+def main(argv: List[str]) -> None:
     opts = parse_args(argv[1:])
+
+    cache_dir = os.path.join(xdg_cache_home, "silero-test")
+    if not os.path.isdir(cache_dir):
+        os.makedirs(os.path.join(cache_dir))
 
     if opts.output is None:
         raise RuntimeError("--output PATH required")
 
+    model_file: str
+    if opts.model is not None:
+        model_file = opts.model
+    else:
+        model_url = LANGUAGE_MODEL_URLS[opts.lang]
+        model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
+        if not os.path.isfile(model_file):
+            print(f"Downloading {model_url} to {model_file}")
+            torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
+
     device = torch.device('cpu')
     torch.set_num_threads(4)
 
-    model = torch.package.PackageImporter(opts.model).load_pickle("tts_models", "model")
+    model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
     model.to(device)
 
-    print(f"Model: {opts.model}")
-    print(f"Speakers: {model.speakers}")
+    print(f"Model: {model_file}")
+    print(f"Speakers: {' '.join(model.speakers)}")
+    print(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
+
+    if opts.speaker is None:
+        speaker = model.speakers[0]
+    else:
+        speaker = opts.speaker
 
     if opts.file:
         with open(opts.file) as fin:
             text = fin.read()
             if len(text) > 1000:
-                print("error: file larger than 1000 charcters, truncating",file=sys.stderr)
+                print("error: file larger than 1000 charcters, truncating", file=sys.stderr)
             text = text[0:1000]
     else:
         text = opts.text
 
+    if text is None:
+        raise RuntimeError("no text given")
+
     audio_path = model.save_wav(audio_path=opts.output,
                                 text=text,
-                                speaker=opts.speaker,
+                                speaker=speaker,
                                 sample_rate=opts.rate)
     print(f"Written: {audio_path}")
 
