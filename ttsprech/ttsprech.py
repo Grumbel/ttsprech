@@ -19,6 +19,7 @@ from typing import List
 
 import argparse
 import logging
+import nltk
 import os
 import sys
 import tempfile
@@ -42,19 +43,7 @@ LANGUAGE_MODEL_URLS = {
     'indic': "https://models.silero.ai/models/tts/indic/v3_indic.pt",
 }
 
-
-NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_PLACEHOLDER"
-
-
-def split_sentences(text: str) -> List[str]:
-    NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
-    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
-        import nltk
-        tokenize = nltk.data.load(os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle'))
-        return tokenize.sentences_from_text(text)
-    else:
-        logging.error("NLTK_DATA_PUNKT_DIR not set, treating text as one sentence")
-        return [text]
+NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
 
 
 def parse_args(args: List[str]) -> argparse.Namespace:
@@ -114,7 +103,7 @@ def main(argv: List[str]) -> None:
         model_file = opts.model
     else:
         if opts.lang not in LANGUAGE_MODEL_URLS:
-            raise RuntimeError(f"unknown language '{opts.lang}'")
+            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n  {' '.join(LANGUAGE_MODEL_URLS.keys())}")
 
         model_url = LANGUAGE_MODEL_URLS[opts.lang]
         model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
@@ -128,9 +117,9 @@ def main(argv: List[str]) -> None:
     model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
     model.to(device)
 
-    print(f"Model: {model_file}")
-    print(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
-    print(f"Speakers: {' '.join(model.speakers)}")
+    logger.info(f"Model: {model_file}")
+    logger.info(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
+    logger.info(f"Speakers: {' '.join(model.speakers)}")
 
     if opts.speaker is None:
         speaker = model.speakers[0]
@@ -138,9 +127,18 @@ def main(argv: List[str]) -> None:
         if opts.speaker in model.speakers:
             speaker = opts.speaker
         else:
-            raise RuntimeError("unknown speaker: {opts.speaker}")
+            raise RuntimeError(f"unknown speaker: '{opts.speaker}', must be one of:\n{' '.join(model.speakers)}")
 
-    sentences = split_sentences(text)
+    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
+        tokenize = nltk.data.load(os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle'))
+    else:
+        logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
+        download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
+        nltk.download(download_dir=download_dir, quiet=(not opts.verbose),
+                      info_or_id="punkt", raise_on_error=True)
+        tokenize = nltk.data.load(os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle'))
+
+    sentences = tokenize.sentences_from_text(text)
 
     if opts.play:
         player = Player()
