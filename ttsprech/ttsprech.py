@@ -72,7 +72,9 @@ def main(argv: List[str]) -> None:
     opts = parse_args(argv[1:])
 
     if opts.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     cache_dir = os.path.join(xdg_cache_home, "ttsprech")
     if not os.path.isdir(cache_dir):
