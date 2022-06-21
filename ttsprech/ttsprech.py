@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 LANGUAGE_MODEL_URLS = {
-    'en':  "https://models.silero.ai/models/tts/en/v3_en.pt",
+    'en': "https://models.silero.ai/models/tts/en/v3_en.pt",
     'de': "https://models.silero.ai/models/tts/de/v3_de.pt",
     'pt': "https://models.silero.ai/models/tts/es/v3_es.pt",
     'fr': "https://models.silero.ai/models/tts/fr/v3_fr.pt",
@@ -50,6 +50,8 @@ NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
 def parse_args(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Text to Speech")
     parser.add_argument("TEXT", nargs='*')
+    parser.add_argument("-v", "--verbose", action='store_true', default=False,
+                        help="Be more verbose")
     parser.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                         help="Convert content of FILE to wav")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
@@ -60,10 +62,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
-    parser.add_argument("-o", "--output", metavar="FILE", type=str, default=None,
-                        help="Write wave to FILE")
-    parser.add_argument("-v", "--verbose", action='store_true', default=False,
-                        help="Be more verbose")
+    parser.add_argument("-O", "--output-dir", metavar="DIR", type=str, default=None,
+                        help="Write .wav files to DIR")
     return parser.parse_args(args)
 
 
@@ -79,11 +79,11 @@ def main(argv: List[str]) -> None:
     if not os.path.isdir(cache_dir):
         os.makedirs(os.path.join(cache_dir))
 
-    if opts.output is None:
-        tmpdir = tempfile.mkdtemp(prefix="ttsprech-audio-")
-        outfile_root, outfile_ext = os.path.splitext(os.path.join(tmpdir, "out.wav"))
+    if opts.output_dir is None:
+        output_dir = tempfile.mkdtemp(prefix="ttsprech-audio-")
     else:
-        outfile_root, outfile_ext = os.path.splitext(opts.output)
+        output_dir = opts.output_dir
+        os.mkdir(output_dir)
 
     if opts.file:
         with open(opts.file) as fin:
@@ -143,7 +143,7 @@ def main(argv: List[str]) -> None:
     tokenize = nltk.data.load(nltk_data_punkt_file)
     sentences = tokenize.sentences_from_text(text)
 
-    if opts.output is not None:
+    if opts.output_dir is not None:
         def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
             logger.info(f"Processing {outfile}: {text!r}")
             try:
@@ -161,12 +161,12 @@ def main(argv: List[str]) -> None:
 
         with ThreadPoolExecutor(os.cpu_count()) as executor:
             for idx, sentence in enumerate(sentences):
-                outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
                 executor.submit(generate_wave, sentence, outfile)
     else:
         with Player() as player:
             for idx, sentence in enumerate(sentences):
-                outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
                 logger.info(f"Processing {outfile}: {sentence!r}")
                 try:
                     audio_path = model.save_wav(audio_path=outfile,
