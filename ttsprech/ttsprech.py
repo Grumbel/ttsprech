@@ -61,8 +61,6 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
-    parser.add_argument("-p", "--play", action='store_true', default=False,
-                        help="Play the generated wav")
     parser.add_argument("-o", "--output", metavar="FILE", type=str, default=None,
                         help="Write wave to FILE")
     parser.add_argument("-v", "--verbose", action='store_true', default=False,
@@ -81,11 +79,8 @@ def main(argv: List[str]) -> None:
         os.makedirs(os.path.join(cache_dir))
 
     if opts.output is None:
-        if opts.play:
-            tmpdir = tempfile.mkdtemp(prefix="ttsprech-audio-")
-            outfile_root, outfile_ext = os.path.splitext(os.path.join(tmpdir, "out.wav"))
-        else:
-            raise RuntimeError("--output PATH required")
+        tmpdir = tempfile.mkdtemp(prefix="ttsprech-audio-")
+        outfile_root, outfile_ext = os.path.splitext(os.path.join(tmpdir, "out.wav"))
     else:
         outfile_root, outfile_ext = os.path.splitext(opts.output)
 
@@ -140,35 +135,40 @@ def main(argv: List[str]) -> None:
 
     sentences = tokenize.sentences_from_text(text)
 
-    if opts.play:
-        player = Player()
+    if opts.output is not None:
+        for idx, sentence in enumerate(sentences):
+            outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+            logger.info(f"Processing {outfile}: {sentence!r}")
+            try:
+                audio_path = model.save_wav(audio_path=outfile,
+                                            text=sentence,
+                                            speaker=speaker,
+                                            sample_rate=opts.rate)
+                logger.info(f"Written: {audio_path}")
+            except Exception as err:
+                # ValueError() is thrown when the sentence only contains numbers
+                logger.error(f"failed to process {sentence!r}: {err!r}")
     else:
-        player = None
-
-    for idx, sentence in enumerate(sentences):
-        outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
-        logger.info(f"Processing {outfile}: {sentence!r}")
-        try:
-            audio_path = model.save_wav(audio_path=outfile,
-                                        text=sentence,
-                                        speaker=speaker,
-                                        sample_rate=opts.rate)
-            if player is not None:
-                player.add(audio_path)
-
-            logger.info(f"Written: {audio_path}")
-        except Exception as err:
-            # ValueError() is thrown when the sentence only contains numbers
-            logger.error(f"failed to process {sentence!r}: {err!r}")
-
-    if opts.play:
-        player.quit()
+        with Player() as player:
+            for idx, sentence in enumerate(sentences):
+                outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+                logger.info(f"Processing {outfile}: {sentence!r}")
+                try:
+                    audio_path = model.save_wav(audio_path=outfile,
+                                                text=sentence,
+                                                speaker=speaker,
+                                                sample_rate=opts.rate)
+                    player.add(audio_path)
+                    logger.info(f"Written: {audio_path}")
+                except ValueError as err:
+                    # ValueError() is thrown when the sentence only contains numbers
+                    logger.error(f"failed to process {sentence!r}: {err!r}")
 
 
 def main_entrypoint() -> None:
     try:
         main(sys.argv)
-    except Exception as err:
+    except RuntimeError as err:
         print(f"error: {err}", file=sys.stderr)
 
 

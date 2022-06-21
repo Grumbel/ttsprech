@@ -31,16 +31,19 @@ class Player:
         self.wave_obj = None
         self.play_obj = None
         self.thread = Thread(target=lambda: self.run())
+
+    def __enter__(self) -> 'Player':
         self.thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        logger.info(f"Player shutting down")
+        self.queue.put(None)
+        self.thread.join()
 
     def add(self, filename: str) -> None:
         logger.info(f"Player added {filename} to playlist")
         self.queue.put(filename)
-
-    def quit(self) -> None:
-        logger.info(f"Player shutting down")
-        self.queue.put(None)
-        self.thread.join()
 
     def run(self):
         logger.info(f"Player started")
