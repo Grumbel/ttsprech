@@ -164,6 +164,7 @@ def main(argv: List[str]) -> None:
                 outfile = os.path.join(output_dir, f"{idx:06d}.wav")
                 executor.submit(generate_wave, sentence, outfile)
     else:
+        files_to_cleanup = []
         with Player() as player:
             for idx, sentence in enumerate(sentences):
                 outfile = os.path.join(output_dir, f"{idx:06d}.wav")
@@ -173,11 +174,20 @@ def main(argv: List[str]) -> None:
                                                 text=sentence,
                                                 speaker=speaker,
                                                 sample_rate=opts.rate)
+                    files_to_cleanup.append(audio_path)
                     player.add(audio_path)
                     logger.info(f"Written: {audio_path}")
                 except ValueError as err:
                     # ValueError() is thrown when the sentence only contains numbers
                     logger.error(f"failed to process {sentence!r}: {err!r}")
+
+        # cleanup
+        logger.info("cleaning up generated files")
+        for file in files_to_cleanup:
+            logger.info(f"removing '{file}'")
+            os.remove(file)
+        logger.info(f"removing directory '{output_dir}'")
+        os.rmdir(output_dir)
 
 
 def main_entrypoint() -> None:
