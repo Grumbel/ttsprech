@@ -16,14 +16,15 @@ Required language model files are downloaded on demand and stored in `~/.cache/t
 Usage
 -----
 
-    ttsprech --help
-    usage: ttsprech [-h] [-t TETX | -f FILE] [-m FILE] [-l LANGUAGE] [-s SPEAKER] [-r RATE] [-p] [-o FILE]
+    usage: ttsprech [-h] [-f FILE] [-m FILE] [-l LANGUAGE] [-s SPEAKER] [-r RATE] [-o FILE] [-v] [TEXT ...]
 
     Text to Speech
 
+    positional arguments:
+      TEXT
+
     optional arguments:
       -h, --help            show this help message and exit
-      -t TETX, --text TETX  Convert TEXT to wav
       -f FILE, --file FILE  Convert content of FILE to wav
       -m FILE, --model FILE
                             Model file to use
@@ -32,9 +33,9 @@ Usage
       -s SPEAKER, --speaker SPEAKER
                             Speaker to use
       -r RATE, --rate RATE  Sample rate
-      -p, --play            Play the generated wav
       -o FILE, --output FILE
                             Write wave to FILE
+      -v, --verbose         Be more verbose
 
 
 Legal

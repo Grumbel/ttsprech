@@ -49,11 +49,9 @@ NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
 
 def parse_args(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Text to Speech")
-    group_ex = parser.add_mutually_exclusive_group()
-    group_ex.add_argument("-t", "--text", metavar="TETX", type=str, default=None,
-                          help="Convert TEXT to wav")
-    group_ex.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
-                          help="Convert content of FILE to wav")
+    parser.add_argument("TEXT", nargs='*')
+    parser.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
+                        help="Convert content of FILE to wav")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
                         help="Model file to use ")
     parser.add_argument("-l", "--lang", metavar="LANGUAGE", type=str, default='en',
@@ -91,7 +89,10 @@ def main(argv: List[str]) -> None:
         with open(opts.file) as fin:
             text = fin.read()
     else:
-        text = opts.text
+        if not opts.TEXT:
+            raise RuntimeError("no text given")
+
+        text = " ".join(opts.TEXT)
 
     if text is None:
         raise RuntimeError("no text given, use --text TEXT or --file PATH")
