@@ -106,7 +106,7 @@ def main(argv: List[str]) -> None:
         model_url = LANGUAGE_MODEL_URLS[opts.lang]
         model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
         if not os.path.isfile(model_file):
-            print(f"Downloading {model_url} to {model_file}", file=stderr)
+            print(f"Downloading {model_url} to {model_file}", file=sys.stderr)
             torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
 
     device = torch.device('cpu')
