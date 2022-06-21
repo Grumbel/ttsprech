@@ -41,12 +41,13 @@
             hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
           };
 
-          silero-test = pkgs.python3Packages.buildPythonPackage rec {
-            pname = "silero-test";
+          ttsprech = pkgs.python3Packages.buildPythonPackage rec {
+            pname = "ttsprech";
             version = "0.0.0";
             src = ./.;
+            doCheck = false;
             patchPhase = ''
-              substituteInPlace silero-test --replace \
+              substituteInPlace ttsprech/ttsprech.py --replace \
                 "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}"
             '';
             propagatedBuildInputs = with pkgs; [
@@ -57,7 +58,7 @@
             ];
           };
         };
-        defaultPackage = packages.silero-test;
+        defaultPackage = packages.ttsprech;
       }
     );
 }
