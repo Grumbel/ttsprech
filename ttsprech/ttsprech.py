@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import argparse
 import logging
@@ -67,23 +67,29 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def main(argv: List[str]) -> None:
-    opts = parse_args(argv[1:])
-
-    if opts.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
+def setup_cachedir() -> str:
     cache_dir = os.path.join(xdg_cache_home, "ttsprech")
+
     if not os.path.isdir(cache_dir):
         os.makedirs(os.path.join(cache_dir))
+
+    return cache_dir
+
+
+def setup_output_dir(opts: argparse.Namespace) -> str:
+    output_dir: str
 
     if opts.output_dir is None:
         output_dir = tempfile.mkdtemp(prefix="ttsprech-audio-")
     else:
         output_dir = opts.output_dir
         os.mkdir(output_dir)
+
+    return output_dir
+
+
+def setup_text(opts: argparse.Namespace) -> str:
+    text: str
 
     if opts.file:
         with open(opts.file) as fin:
@@ -97,7 +103,12 @@ def main(argv: List[str]) -> None:
     if text is None:
         raise RuntimeError("no text given, use --text TEXT or --file PATH")
 
+    return text
+
+
+def setup_model(opts: argparse.Namespace, cache_dir: str) -> Any:
     model_file: str
+
     if opts.model is not None:
         model_file = opts.model
     else:
@@ -114,6 +125,7 @@ def main(argv: List[str]) -> None:
     device = torch.device('cpu')
     torch.set_num_threads(4)  # more than 4 does not provide a speedup
 
+    # model
     logger.info(f"loading silero model: {model_file}")
     model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
     model.to(device)
@@ -121,6 +133,12 @@ def main(argv: List[str]) -> None:
     logger.info(f"Model: {model_file}")
     logger.info(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
     logger.info(f"Speakers: {' '.join(model.speakers)}")
+
+    return model
+
+
+def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
+    speaker: str
 
     if opts.speaker is None:
         speaker = model.speakers[0]
@@ -130,6 +148,10 @@ def main(argv: List[str]) -> None:
         else:
             raise RuntimeError(f"unknown speaker: '{opts.speaker}', must be one of:\n{' '.join(model.speakers)}")
 
+    return speaker
+
+
+def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
     if os.path.isdir(NLTK_DATA_PUNKT_DIR):
         nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
     else:
@@ -141,8 +163,12 @@ def main(argv: List[str]) -> None:
 
     logger.info(f"loading NLTK model: {nltk_data_punkt_file}")
     tokenize = nltk.data.load(nltk_data_punkt_file)
-    sentences = tokenize.sentences_from_text(text)
+    sentences: List[str] = tokenize.sentences_from_text(text)
 
+    return sentences
+
+
+def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str], output_dir: str) -> None:
     if opts.output_dir is not None:
         def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
             logger.info(f"Processing {outfile}: {text!r}")
@@ -188,6 +214,24 @@ def main(argv: List[str]) -> None:
             os.remove(file)
         logger.info(f"removing directory '{output_dir}'")
         os.rmdir(output_dir)
+
+
+def main(argv: List[str]) -> None:
+    opts = parse_args(argv[1:])
+
+    if opts.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    cache_dir = setup_cachedir()
+    output_dir = setup_output_dir(opts)
+    text = setup_text(opts)
+    model = setup_model(opts, cache_dir)
+    speaker = setup_speaker(opts, model)
+    sentences = setup_sentences(opts, text)
+
+    run(opts, model, speaker, sentences, output_dir)
 
 
 def main_entrypoint() -> None:
