@@ -16,8 +16,12 @@
 
 
 from threading import Thread
-import queue
+import logging
 import simpleaudio
+import queue
+
+
+logger = logging.getLogger(__name__)
 
 
 class Player:
@@ -30,16 +34,16 @@ class Player:
         self.thread.start()
 
     def add(self, filename: str) -> None:
-        print(f"Player.add: {filename}")
+        logger.info(f"Player added {filename} to playlist")
         self.queue.put(filename)
 
     def quit(self) -> None:
-        print(f"Player.quit")
+        logger.info(f"Player shutting down")
         self.queue.put(None)
         self.thread.join()
 
     def run(self):
-        print("Player started")
+        logger.info(f"Player started")
         while True:
             wave_file = self.queue.get()
             if wave_file is None:

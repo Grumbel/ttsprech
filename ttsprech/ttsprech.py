@@ -18,13 +18,17 @@
 from typing import List
 
 import argparse
+import logging
 import os
 import sys
-import torch
 import tempfile
+import torch
 from xdg.BaseDirectory import xdg_cache_home
 
 from ttsprech.player import Player
+
+
+logger = logging.getLogger(__name__)
 
 
 LANGUAGE_MODEL_URLS = {
@@ -49,7 +53,7 @@ def split_sentences(text: str) -> List[str]:
         tokenize = nltk.data.load(os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle'))
         return tokenize.sentences_from_text(text)
     else:
-        print("warning: NLTK_DATA_PUNKT_DIR not set, treating text as one sentence", file=sys.stderr)
+        logging.error("NLTK_DATA_PUNKT_DIR not set, treating text as one sentence")
         return [text]
 
 
@@ -72,11 +76,16 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Play the generated wav")
     parser.add_argument("-o", "--output", metavar="FILE", type=str, default=None,
                         help="Write wave to FILE")
+    parser.add_argument("-v", "--verbose", action='store_true', default=False,
+                        help="Be more verbose")
     return parser.parse_args(args)
 
 
 def main(argv: List[str]) -> None:
     opts = parse_args(argv[1:])
+
+    if opts.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     cache_dir = os.path.join(xdg_cache_home, "ttsprech")
     if not os.path.isdir(cache_dir):
@@ -91,14 +100,26 @@ def main(argv: List[str]) -> None:
     else:
         outfile_root, outfile_ext = os.path.splitext(opts.output)
 
+    if opts.file:
+        with open(opts.file) as fin:
+            text = fin.read()
+    else:
+        text = opts.text
+
+    if text is None:
+        raise RuntimeError("no text given, use --text TEXT or --file PATH")
+
     model_file: str
     if opts.model is not None:
         model_file = opts.model
     else:
+        if opts.lang not in LANGUAGE_MODEL_URLS:
+            raise RuntimeError(f"unknown language '{opts.lang}'")
+
         model_url = LANGUAGE_MODEL_URLS[opts.lang]
         model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
         if not os.path.isfile(model_file):
-            print(f"Downloading {model_url} to {model_file}")
+            print(f"Downloading {model_url} to {model_file}", file=stderr)
             torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
 
     device = torch.device('cpu')
@@ -108,8 +129,8 @@ def main(argv: List[str]) -> None:
     model.to(device)
 
     print(f"Model: {model_file}")
-    print(f"Speakers: {' '.join(model.speakers)}")
     print(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
+    print(f"Speakers: {' '.join(model.speakers)}")
 
     if opts.speaker is None:
         speaker = model.speakers[0]
@@ -118,15 +139,6 @@ def main(argv: List[str]) -> None:
             speaker = opts.speaker
         else:
             raise RuntimeError("unknown speaker: {opts.speaker}")
-
-    if opts.file:
-        with open(opts.file) as fin:
-            text = fin.read()
-    else:
-        text = opts.text
-
-    if text is None:
-        raise RuntimeError("no text given")
 
     sentences = split_sentences(text)
 
@@ -137,7 +149,7 @@ def main(argv: List[str]) -> None:
 
     for idx, sentence in enumerate(sentences):
         outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
-        print(f"Processing {outfile}: {sentence!r}")
+        logger.info(f"Processing {outfile}: {sentence!r}")
         try:
             audio_path = model.save_wav(audio_path=outfile,
                                         text=sentence,
@@ -146,17 +158,20 @@ def main(argv: List[str]) -> None:
             if player is not None:
                 player.add(audio_path)
 
-            print(f"Written: {audio_path}")
+            logger.info(f"Written: {audio_path}")
         except Exception as err:
             # ValueError() is thrown when the sentence only contains numbers
-            print(f"error: failed to process {sentence!r}: {err!r}")
+            logger.error(f"failed to process {sentence!r}: {err!r}")
 
     if opts.play:
         player.quit()
 
 
 def main_entrypoint() -> None:
-    main(sys.argv)
+    try:
+        main(sys.argv)
+    except Exception as err:
+        print(f"error: {err}", file=sys.stderr)
 
 
 if __name__ == "__main__":
