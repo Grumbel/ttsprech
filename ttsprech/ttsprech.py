@@ -24,6 +24,7 @@ import os
 import sys
 import tempfile
 import torch
+from concurrent.futures import ThreadPoolExecutor
 from xdg.BaseDirectory import xdg_cache_home
 
 from ttsprech.player import Player
@@ -109,8 +110,9 @@ def main(argv: List[str]) -> None:
             torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
 
     device = torch.device('cpu')
-    torch.set_num_threads(torch.multiprocessing.cpu_count())
+    torch.set_num_threads(4)  # more than 4 does not provide a speedup
 
+    logger.info(f"loading silero model: {model_file}")
     model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
     model.to(device)
 
@@ -127,29 +129,38 @@ def main(argv: List[str]) -> None:
             raise RuntimeError(f"unknown speaker: '{opts.speaker}', must be one of:\n{' '.join(model.speakers)}")
 
     if os.path.isdir(NLTK_DATA_PUNKT_DIR):
-        tokenize = nltk.data.load(os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle'))
+        nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
     else:
         logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
         download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
         nltk.download(download_dir=download_dir, quiet=(not opts.verbose),
                       info_or_id="punkt", raise_on_error=True)
-        tokenize = nltk.data.load(os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle'))
+        nltk_data_punkt_file = os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle')
 
+    logger.info(f"loading NLTK model: {nltk_data_punkt_file}")
+    tokenize = nltk.data.load(nltk_data_punkt_file)
     sentences = tokenize.sentences_from_text(text)
 
     if opts.output is not None:
-        for idx, sentence in enumerate(sentences):
-            outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
-            logger.info(f"Processing {outfile}: {sentence!r}")
+        def generate_wave(text: str, outfile: str) -> None:
+            logger.info(f"Processing {outfile}: {text!r}")
             try:
                 audio_path = model.save_wav(audio_path=outfile,
-                                            text=sentence,
+                                            text=text,
                                             speaker=speaker,
                                             sample_rate=opts.rate)
                 logger.info(f"Written: {audio_path}")
             except Exception as err:
-                # ValueError() is thrown when the sentence only contains numbers
-                logger.error(f"failed to process {sentence!r}: {err!r}")
+                # ValueError() is thrown when the text only contains numbers
+                logger.error(f"failed to process {text!r}: {err!r}")
+                return (text, None)
+            finally:
+                return (text, outfile)
+
+        with ThreadPoolExecutor(os.cpu_count()) as executor:
+            for idx, sentence in enumerate(sentences):
+                outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
+                result = executor.submit(generate_wave, sentence, outfile)
     else:
         with Player() as player:
             for idx, sentence in enumerate(sentences):
