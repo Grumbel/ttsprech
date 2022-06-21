@@ -45,11 +45,21 @@
             pname = "ttsprech";
             version = "0.0.0";
             src = ./.;
-            doCheck = false;
             patchPhase = ''
               substituteInPlace ttsprech/ttsprech.py --replace \
                 "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}"
             '';
+            checkPhase = ''
+              runHook preCheck
+              ${pkgs.python3Packages.mypy}/bin/mypy -p ttsprech
+              ${pkgs.python3Packages.python.interpreter} -m unittest discover
+              runHook postCheck
+            '';
+            nativeBuildInputs = with pkgs; [
+              python3Packages.setuptools
+              python3Packages.flake8
+              python3Packages.mypy
+            ];
             propagatedBuildInputs = with pkgs; [
               silero
               python3Packages.nltk

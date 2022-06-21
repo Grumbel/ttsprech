@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from typing import List
+from typing import List, Optional, Tuple
 
 import argparse
 import logging
@@ -51,7 +51,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Text to Speech")
     group_ex = parser.add_mutually_exclusive_group()
     group_ex.add_argument("-t", "--text", metavar="TETX", type=str, default=None,
-                        help="Convert TEXT to wav")
+                          help="Convert TEXT to wav")
     group_ex.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                           help="Convert content of FILE to wav")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
@@ -101,7 +101,8 @@ def main(argv: List[str]) -> None:
         model_file = opts.model
     else:
         if opts.lang not in LANGUAGE_MODEL_URLS:
-            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n  {' '.join(LANGUAGE_MODEL_URLS.keys())}")
+            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n"
+                               f"{' '.join(LANGUAGE_MODEL_URLS.keys())}")
 
         model_url = LANGUAGE_MODEL_URLS[opts.lang]
         model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
@@ -142,7 +143,7 @@ def main(argv: List[str]) -> None:
     sentences = tokenize.sentences_from_text(text)
 
     if opts.output is not None:
-        def generate_wave(text: str, outfile: str) -> None:
+        def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
             logger.info(f"Processing {outfile}: {text!r}")
             try:
                 audio_path = model.save_wav(audio_path=outfile,
@@ -160,7 +161,7 @@ def main(argv: List[str]) -> None:
         with ThreadPoolExecutor(os.cpu_count()) as executor:
             for idx, sentence in enumerate(sentences):
                 outfile = f"{outfile_root}-{idx:06d}{outfile_ext}"
-                result = executor.submit(generate_wave, sentence, outfile)
+                executor.submit(generate_wave, sentence, outfile)
     else:
         with Player() as player:
             for idx, sentence in enumerate(sentences):

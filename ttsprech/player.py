@@ -18,7 +18,7 @@
 from threading import Thread
 import logging
 import simpleaudio
-import queue
+from queue import Queue
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class Player:
 
     def __init__(self) -> None:
-        self.queue = queue.Queue()
+        self.queue: Queue = Queue()
         self.wave_obj = None
         self.play_obj = None
         self.thread = Thread(target=lambda: self.run())
@@ -37,7 +37,7 @@ class Player:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        logger.info(f"Player shutting down")
+        logger.info("Player shutting down")
         self.queue.put(None)
         self.thread.join()
 
@@ -46,7 +46,7 @@ class Player:
         self.queue.put(filename)
 
     def run(self):
-        logger.info(f"Player started")
+        logger.info("Player started")
         while True:
             wave_file = self.queue.get()
             if wave_file is None:
