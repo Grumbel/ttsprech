@@ -83,7 +83,13 @@ def main(argv: List[str]) -> None:
         os.makedirs(os.path.join(cache_dir))
 
     if opts.output is None:
-        raise RuntimeError("--output PATH required")
+        if opts.play:
+            tmpdir = tempfile.mkdtemp(prefix="ttsprech-audio-")
+            outfile_root, outfile_ext = os.path.splitext(os.path.join(tmpdir, "out.wav"))
+        else:
+            raise RuntimeError("--output PATH required")
+    else:
+        outfile_root, outfile_ext = os.path.splitext(opts.output)
 
     model_file: str
     if opts.model is not None:
@@ -122,7 +128,6 @@ def main(argv: List[str]) -> None:
     if text is None:
         raise RuntimeError("no text given")
 
-    outfile_root, outfile_ext = os.path.splitext(opts.output)
     sentences = split_sentences(text)
 
     if opts.play:
