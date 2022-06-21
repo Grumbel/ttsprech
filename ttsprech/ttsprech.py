@@ -83,7 +83,8 @@ def setup_output_dir(opts: argparse.Namespace) -> str:
         output_dir = tempfile.mkdtemp(prefix="ttsprech-audio-")
     else:
         output_dir = opts.output_dir
-        os.mkdir(output_dir)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
 
     return output_dir
 
