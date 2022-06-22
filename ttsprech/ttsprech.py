@@ -24,26 +24,16 @@ import nltk
 import os
 import sys
 import tempfile
-import torch
 from concurrent.futures import ThreadPoolExecutor, Future
 from xdg.BaseDirectory import xdg_cache_home
 
 from ttsprech.player import Player
 from ttsprech.tokenize import replace_numbers_with_words
+from ttsprech.silero import (silero_model_from_file, silero_model_from_language,
+                             silero_languages)
 
 logger = logging.getLogger(__name__)
 
-
-LANGUAGE_MODEL_URLS = {
-    'en': "https://models.silero.ai/models/tts/en/v3_en.pt",
-    'de': "https://models.silero.ai/models/tts/de/v3_de.pt",
-    'pt': "https://models.silero.ai/models/tts/es/v3_es.pt",
-    'fr': "https://models.silero.ai/models/tts/fr/v3_fr.pt",
-    'ua': "https://models.silero.ai/models/tts/ua/v3_ua.pt",
-    'uz': "https://models.silero.ai/models/tts/uz/v3_uz.pt",
-    'xal': "https://models.silero.ai/models/tts/xal/v3_xal.pt",
-    'indic': "https://models.silero.ai/models/tts/indic/v3_indic.pt",
-}
 
 NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
 
@@ -138,14 +128,10 @@ def setup_language(text: str, opts: argparse.Namespace) -> str:
     if opts.lang is None:
         language = langdetect.detect(text)
         logger.info(f"autodetected language: '{language}'")
-        if language not in LANGUAGE_MODEL_URLS:
+        if language not in silero_languages():
             logger.warning(f"autodetected '{language}' not available, fallback to 'en'")
             language = "en"
     else:
-        if opts.lang not in LANGUAGE_MODEL_URLS:
-            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n  "
-                               f"{' '.join(LANGUAGE_MODEL_URLS.keys())}")
-
         language = opts.lang
 
     return language
@@ -155,27 +141,9 @@ def setup_model(opts: argparse.Namespace, language: str, cache_dir: str) -> Any:
     model_file: str
 
     if opts.model is not None:
-        model_file = opts.model
+        return silero_model_from_file(opts.model)
     else:
-        model_url = LANGUAGE_MODEL_URLS[language]
-        model_file = os.path.join(cache_dir, f"{language}.pt")
-        if not os.path.isfile(model_file):
-            print(f"Downloading {model_url} to {model_file}", file=sys.stderr)
-            torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
-
-    device = torch.device('cpu')
-    torch.set_num_threads(4)  # more than 4 does not provide a speedup
-
-    # model
-    logger.info(f"loading silero model: {model_file}")
-    model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
-    model.to(device)
-
-    logger.info(f"Model: {model_file}")
-    logger.info(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
-    logger.info(f"Speakers: {' '.join(model.speakers)}")
-
-    return model
+        return silero_model_from_language(language, cache_dir)
 
 
 def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
