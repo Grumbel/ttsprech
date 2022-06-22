@@ -62,6 +62,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
+    parser.add_argument("-T", "--threads", metavar="NUM", type=int, default=None,
+                        help="Number of threads to use")
     parser.add_argument("-O", "--output-dir", metavar="DIR", type=str, default=None,
                         help="Write .wav files to DIR")
     return parser.parse_args(args)
@@ -187,7 +189,16 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
         finally:
             return outfile
 
-    with ThreadPoolExecutor(os.cpu_count() - 4) as executor:
+    # Each silero-model is using 4 threads, but doesn't fully utilize
+    # them, so divide by 2 instead of 4, to approximate the thread
+    # count.
+    max_workers: int
+    if opts.threads is not None:
+        max_workers = max(1, opts.threads // 2)
+    else:
+        max_workers = max(1, (os.cpu_count() or 1) // 2)
+
+    with ThreadPoolExecutor(max_workers) as executor:
         output_files: List[Tuple[str, Future[Optional[str]]]] = []
 
         for idx, sentence in enumerate(sentences):
