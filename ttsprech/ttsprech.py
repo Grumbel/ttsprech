@@ -62,6 +62,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
                         help="Sample rate")
+    parser.add_argument("-S", "--start", metavar="NUM", type=int, default=0,
+                        help="Start at sentence NUM")
     parser.add_argument("-T", "--threads", metavar="NUM", type=int, default=None,
                         help="Number of threads to use")
     parser.add_argument("-O", "--output-dir", metavar="DIR", type=str, default=None,
@@ -202,8 +204,13 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
         output_files: List[Tuple[str, Future[Optional[str]]]] = []
 
         for idx, sentence in enumerate(sentences):
-            outfile = os.path.join(output_dir, f"{idx:06d}.wav")
-            output_files.append((sentence, executor.submit(generate_wave, sentence, outfile)))
+            if (idx + 1) < opts.start:
+                future: Future[Optional[str]] = Future()
+                future.set_result(None)
+                output_files.append((sentence, future))
+            else:
+                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
+                output_files.append((sentence, executor.submit(generate_wave, sentence, outfile)))
 
         if use_player:
             files_to_cleanup: List[str] = []
@@ -213,7 +220,7 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
                     maybe_wavfile = outfile_future.result()
                     if maybe_wavfile:
                         files_to_cleanup.append(maybe_wavfile)
-                        player.add(text, maybe_wavfile)
+                    player.add(text, maybe_wavfile)
 
             # cleanup
             logger.info("cleaning up generated files")
