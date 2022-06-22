@@ -10,10 +10,8 @@
   outputs = { self, nixpkgs, flake-utils, silero-src }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-          config = { allowUnfree = true; };
-        };
+        pkgs = nixpkgs.legacyPackages.${system};
+        pythonPackages = pkgs.python3Packages;
       in rec {
         packages = flake-utils.lib.flattenTree rec {
           nltk_data_punkt = pkgs.fetchzip {
@@ -21,7 +19,7 @@
             hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
           };
 
-          ttsprech = pkgs.python3Packages.buildPythonPackage rec {
+          ttsprech = pythonPackages.buildPythonPackage rec {
             pname = "ttsprech";
             version = "0.0.0";
             src = ./.;
@@ -31,32 +29,32 @@
             '';
             checkPhase = ''
               runHook preCheck
-              ${pkgs.python3Packages.mypy}/bin/mypy -p ttsprech
-              ${pkgs.python3Packages.python.interpreter} -m unittest discover
+              mypy -p ttsprech
+              flake8
+              pylint ttsprech
+              python -m unittest discover
               runHook postCheck
             '';
-            nativeBuildInputs = with pkgs; [
-              python3Packages.setuptools
-              python3Packages.flake8
-              python3Packages.mypy
+            checkInputs =  with pythonPackages; [
+              mypy
+              flake8
+              pylint
             ];
-            propagatedBuildInputs = with pkgs; [
-              python3Packages.torchaudio-bin
-              python3Packages.nltk
-              python3Packages.langdetect
-              python3Packages.pyxdg
-              python3Packages.simpleaudio
-              python3Packages.num2words
+            nativeBuildInputs = with pythonPackages; [
+              setuptools
+            ];
+            propagatedBuildInputs = with pythonPackages; [
+              langdetect
+              nltk
+              num2words
+              pyxdg
+              simpleaudio
+              torchaudio-bin
             ];
           };
         };
         defaultPackage = packages.ttsprech;
         devShell = pkgs.mkShell {
-          packages = [
-            pythonPackages.flake8
-            pythonPackages.mypy
-            pythonPackages.pylint
-          ];
           inputsFrom = [ defaultPackage ];
         };
       }
