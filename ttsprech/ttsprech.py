@@ -236,7 +236,7 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
                 future.set_result(None)
                 output_files.append((sentence, future))
             else:
-                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
+                outfile = os.path.join(output_dir, f"{idx + 1:06d}.wav")
                 output_files.append((sentence, executor.submit(generate_wave, sentence, outfile)))
 
         if use_player:
