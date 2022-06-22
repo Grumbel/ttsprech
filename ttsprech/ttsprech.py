@@ -18,14 +18,15 @@
 from typing import Any, List, Optional, Tuple
 
 import argparse
-import langdetect
 import logging
-import nltk
 import os
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, Future
 from xdg.BaseDirectory import xdg_cache_home
+
+import langdetect
+import nltk
 
 from ttsprech.player import Player
 from ttsprech.tokenize import replace_numbers_with_words
@@ -138,12 +139,14 @@ def setup_language(text: str, opts: argparse.Namespace) -> str:
 
 
 def setup_model(opts: argparse.Namespace, language: str, cache_dir: str) -> Any:
-    model_file: str
+    model: Any
 
     if opts.model is not None:
-        return silero_model_from_file(opts.model)
+        model = silero_model_from_file(opts.model)
     else:
-        return silero_model_from_language(language, cache_dir)
+        model = silero_model_from_language(language, cache_dir)
+
+    return model
 
 
 def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
@@ -203,12 +206,12 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
                                             speaker=speaker,
                                             sample_rate=opts.rate)
             logger.info(f"Written: {audio_path}")
-        except Exception as err:
+        except ValueError as err:
             # ValueError() is thrown when the text only contains numbers
             logger.error(f"failed to process {text!r}: {err!r}")
             return None
-        finally:
-            return outfile
+
+        return outfile
 
     with ThreadPoolExecutor(max_workers) as executor:
         output_files: List[Tuple[str, Future[Optional[str]]]] = []

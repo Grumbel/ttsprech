@@ -19,9 +19,9 @@ from typing import Optional, Tuple, Type
 from types import TracebackType
 
 from threading import Thread
+from queue import Queue
 import logging
 import simpleaudio
-from queue import Queue
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class Player:
         self.thread.start()
         return self
 
-    def __exit__(self,
+    def __exit__(self,  # pylint: disable=useless-return
                  exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> Optional[bool]:

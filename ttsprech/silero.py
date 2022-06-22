@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from typing import Any, List, Optional
+from typing import Any, List
 
 import logging
 import os
