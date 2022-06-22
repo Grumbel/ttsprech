@@ -65,6 +65,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Sample rate")
     parser.add_argument("-S", "--start", metavar="NUM", type=int, default=0,
                         help="Start at sentence NUM")
+    parser.add_argument("-E", "--end", metavar="NUM", type=int, default=None,
+                        help="Stop at sentence NUM")
     parser.add_argument("-T", "--threads", metavar="NUM", type=int, default=None,
                         help="Number of threads to use")
     parser.add_argument("-O", "--output-dir", metavar="DIR", type=str, default=None,
@@ -227,7 +229,9 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
         output_files: List[Tuple[str, Future[Optional[str]]]] = []
 
         for idx, sentence in enumerate(sentences):
-            if (idx + 1) < opts.start:
+            skip_sentence = (((idx + 1) < opts.start) or
+                             (opts.end is not None and (idx + 1) >= opts.end))
+            if skip_sentence:
                 future: Future[Optional[str]] = Future()
                 future.set_result(None)
                 output_files.append((sentence, future))
