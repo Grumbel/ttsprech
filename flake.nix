@@ -63,6 +63,7 @@
             propagatedBuildInputs = with pkgs; [
               silero
               python3Packages.nltk
+              python3Packages.langdetect
               python3Packages.pyxdg
               python3Packages.simpleaudio
             ];

@@ -18,6 +18,7 @@
 from typing import Any, List, Optional, Tuple
 
 import argparse
+import langdetect
 import logging
 import nltk
 import os
@@ -56,8 +57,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Convert content of FILE to wav")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
                         help="Model file to use ")
-    parser.add_argument("-l", "--lang", metavar="LANGUAGE", type=str, default='en',
-                        help="Use language LANGUAGE")
+    parser.add_argument("-l", "--lang", metavar="LANGUAGE", type=str, default=None,
+                        help="Use language LANGUAGE (default: auto)")
     parser.add_argument("-s", "--speaker", metavar="SPEAKER", type=str, default=None,
                         help="Speaker to use")
     parser.add_argument("-r", "--rate", metavar="RATE", type=int, default=48000,
@@ -111,18 +112,33 @@ def setup_text(opts: argparse.Namespace) -> str:
     return text
 
 
-def setup_model(opts: argparse.Namespace, cache_dir: str) -> Any:
+def setup_language(text: str, opts: argparse.Namespace) -> str:
+    language: str
+
+    if opts.lang is None:
+        language = langdetect.detect(text)
+        logger.info(f"autodetected language: '{language}'")
+        if language not in LANGUAGE_MODEL_URLS:
+            logger.warning(f"autodetected '{language}' not available, fallback to 'en'")
+            language = "en"
+    else:
+        if opts.lang not in LANGUAGE_MODEL_URLS:
+            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n  "
+                               f"{' '.join(LANGUAGE_MODEL_URLS.keys())}")
+
+        language = opts.lang
+
+    return language
+
+
+def setup_model(opts: argparse.Namespace, language: str, cache_dir: str) -> Any:
     model_file: str
 
     if opts.model is not None:
         model_file = opts.model
     else:
-        if opts.lang not in LANGUAGE_MODEL_URLS:
-            raise RuntimeError(f"unknown language '{opts.lang}', must be one of:\n"
-                               f"{' '.join(LANGUAGE_MODEL_URLS.keys())}")
-
-        model_url = LANGUAGE_MODEL_URLS[opts.lang]
-        model_file = os.path.join(cache_dir, f"{opts.lang}.pt")
+        model_url = LANGUAGE_MODEL_URLS[language]
+        model_file = os.path.join(cache_dir, f"{language}.pt")
         if not os.path.isfile(model_file):
             print(f"Downloading {model_url} to {model_file}", file=sys.stderr)
             torch.hub.download_url_to_file(model_url, dst=model_file, progress=True)
@@ -151,7 +167,8 @@ def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
         if opts.speaker in model.speakers:
             speaker = opts.speaker
         else:
-            raise RuntimeError(f"unknown speaker: '{opts.speaker}', must be one of:\n{' '.join(model.speakers)}")
+            raise RuntimeError(f"unknown speaker: '{opts.speaker}', must be one of:\n  "
+                               f"{' '.join(model.speakers)}")
 
     return speaker
 
@@ -248,7 +265,8 @@ def main(argv: List[str]) -> None:
     cache_dir = setup_cachedir()
     output_dir = setup_output_dir(opts)
     text = setup_text(opts)
-    model = setup_model(opts, cache_dir)
+    language = setup_language(text, opts)
+    model = setup_model(opts, language, cache_dir)
     speaker = setup_speaker(opts, model)
     sentences = setup_sentences(opts, text)
     max_workers = setup_max_workers(opts)
