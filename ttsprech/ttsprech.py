@@ -55,6 +55,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Be more verbose")
     parser.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                         help="Convert content of FILE to wav")
+    parser.add_argument("--ssml", action='store_true', default=False,
+                        help="Interpret text input as SSML")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
                         help="Model file to use ")
     parser.add_argument("-l", "--lang", metavar="LANGUAGE", type=str, default=None,
@@ -176,6 +178,9 @@ def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
 
 
 def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
+    if opts.ssml:
+        return [text]
+
     if os.path.isdir(NLTK_DATA_PUNKT_DIR):
         nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
     else:
@@ -213,10 +218,16 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
     def generate_wave(text: str, outfile: str) -> Optional[str]:
         logger.info(f"Processing {outfile}: {text!r}")
         try:
-            audio_path = model.save_wav(audio_path=outfile,
-                                        text=text,
-                                        speaker=speaker,
-                                        sample_rate=opts.rate)
+            if opts.ssml:
+                audio_path = model.save_wav(audio_path=outfile,
+                                            ssml_text=text,
+                                            speaker=speaker,
+                                            sample_rate=opts.rate)
+            else:
+                audio_path = model.save_wav(audio_path=outfile,
+                                            text=text,
+                                            speaker=speaker,
+                                            sample_rate=opts.rate)
             logger.info(f"Written: {audio_path}")
         except Exception as err:
             # ValueError() is thrown when the text only contains numbers
