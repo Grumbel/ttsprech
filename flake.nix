@@ -66,6 +66,7 @@
               python3Packages.langdetect
               python3Packages.pyxdg
               python3Packages.simpleaudio
+              python3Packages.num2words
             ];
           };
         };

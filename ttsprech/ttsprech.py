@@ -29,7 +29,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from xdg.BaseDirectory import xdg_cache_home
 
 from ttsprech.player import Player
-
+from ttsprech.tokenize import replace_numbers_with_words
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,22 @@ def setup_cachedir() -> str:
         os.makedirs(os.path.join(cache_dir))
 
     return cache_dir
+
+
+def setup_nltk_tokenize(opts: argparse.Namespace) -> Any:
+    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
+        nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
+    else:
+        logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
+        download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
+        nltk.download(download_dir=download_dir, quiet=opts.verbose,
+                      info_or_id="punkt", raise_on_error=True)
+        nltk_data_punkt_file = os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle')
+
+    logger.info(f"loading NLTK model: {nltk_data_punkt_file}")
+    tokenize = nltk.data.load(nltk_data_punkt_file)
+
+    return tokenize
 
 
 def setup_output_dir(opts: argparse.Namespace) -> str:
@@ -177,22 +193,12 @@ def setup_speaker(opts: argparse.Namespace, model: Any) -> str:
     return speaker
 
 
-def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
+def setup_sentences(opts: argparse.Namespace, nltk_tokenize: Any, text: str) -> List[str]:
     if opts.ssml:
         return [text]
 
-    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
-        nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
-    else:
-        logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
-        download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
-        nltk.download(download_dir=download_dir, quiet=(not opts.verbose),
-                      info_or_id="punkt", raise_on_error=True)
-        nltk_data_punkt_file = os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle')
-
-    logger.info(f"loading NLTK model: {nltk_data_punkt_file}")
-    tokenize = nltk.data.load(nltk_data_punkt_file)
-    sentences: List[str] = tokenize.sentences_from_text(text)
+    sentences: List[str] = nltk_tokenize.sentences_from_text(text)
+    sentences = [replace_numbers_with_words(sentence) for sentence in sentences]
 
     return sentences
 
@@ -278,12 +284,13 @@ def main(argv: List[str]) -> None:
         logging.basicConfig(level=logging.WARNING)
 
     cache_dir = setup_cachedir()
+    nltk_tokenize = setup_nltk_tokenize(opts)
     output_dir = setup_output_dir(opts)
     text = setup_text(opts)
     language = setup_language(text, opts)
     model = setup_model(opts, language, cache_dir)
     speaker = setup_speaker(opts, model)
-    sentences = setup_sentences(opts, text)
+    sentences = setup_sentences(opts, nltk_tokenize, text)
     max_workers = setup_max_workers(opts)
 
     run(opts, model, speaker, sentences, output_dir, max_workers)
