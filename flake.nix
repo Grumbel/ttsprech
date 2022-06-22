@@ -51,6 +51,14 @@
           };
         };
         defaultPackage = packages.ttsprech;
+        devShell = pkgs.mkShell {
+          packages = [
+            pythonPackages.flake8
+            pythonPackages.mypy
+            pythonPackages.pylint
+          ];
+          inputsFrom = [ defaultPackage ];
+        };
       }
     );
 }
