@@ -173,7 +173,22 @@ def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
     return sentences
 
 
-def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str], output_dir: str) -> None:
+def setup_max_workers(opts: argparse.Namespace) -> int:
+    # Each silero-model is using 4 threads, but doesn't fully utilize
+    # them, so divide by 2 instead of 4, to approximate the thread
+    # count.
+    max_workers: int
+
+    if opts.threads is not None:
+        max_workers = max(1, opts.threads // 2)
+    else:
+        max_workers = max(1, (os.cpu_count() or 1) // 2)
+
+    return max_workers
+
+
+def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str],
+        output_dir: str, max_workers: int) -> None:
     use_player = opts.output_dir is None
 
     def generate_wave(text: str, outfile: str) -> Optional[str]:
@@ -190,15 +205,6 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
             return None
         finally:
             return outfile
-
-    # Each silero-model is using 4 threads, but doesn't fully utilize
-    # them, so divide by 2 instead of 4, to approximate the thread
-    # count.
-    max_workers: int
-    if opts.threads is not None:
-        max_workers = max(1, opts.threads // 2)
-    else:
-        max_workers = max(1, (os.cpu_count() or 1) // 2)
 
     with ThreadPoolExecutor(max_workers) as executor:
         output_files: List[Tuple[str, Future[Optional[str]]]] = []
@@ -245,8 +251,9 @@ def main(argv: List[str]) -> None:
     model = setup_model(opts, cache_dir)
     speaker = setup_speaker(opts, model)
     sentences = setup_sentences(opts, text)
+    max_workers = setup_max_workers(opts)
 
-    run(opts, model, speaker, sentences, output_dir)
+    run(opts, model, speaker, sentences, output_dir, max_workers)
 
 
 def main_entrypoint() -> None:
