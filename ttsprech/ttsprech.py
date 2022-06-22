@@ -172,7 +172,7 @@ def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
 def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str], output_dir: str) -> None:
     use_player = opts.output_dir is None
 
-    def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
+    def generate_wave(text: str, outfile: str) -> Optional[str]:
         logger.info(f"Processing {outfile}: {text!r}")
         try:
             audio_path = model.save_wav(audio_path=outfile,
@@ -183,25 +183,26 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
         except Exception as err:
             # ValueError() is thrown when the text only contains numbers
             logger.error(f"failed to process {text!r}: {err!r}")
-            return (text, None)
+            return None
         finally:
-            return (text, outfile)
+            return outfile
 
-    with ThreadPoolExecutor(os.cpu_count()) as executor:
-        output_files: List[Future[Tuple[str, Optional[str]]]] = []
+    with ThreadPoolExecutor(os.cpu_count() - 4) as executor:
+        output_files: List[Tuple[str, Future[Optional[str]]]] = []
 
         for idx, sentence in enumerate(sentences):
             outfile = os.path.join(output_dir, f"{idx:06d}.wav")
-            output_files.append(executor.submit(generate_wave, sentence, outfile))
+            output_files.append((sentence, executor.submit(generate_wave, sentence, outfile)))
 
         if use_player:
             files_to_cleanup: List[str] = []
 
-            with Player() as player:
-                for outfile_future in output_files:
-                    text, wavfile = outfile_future.result()
-                    files_to_cleanup.append(wavfile)
-                    player.add(wavfile)
+            with Player(len(output_files)) as player:
+                for text, outfile_future in output_files:
+                    maybe_wavfile = outfile_future.result()
+                    if maybe_wavfile:
+                        files_to_cleanup.append(maybe_wavfile)
+                        player.add(text, maybe_wavfile)
 
             # cleanup
             logger.info("cleaning up generated files")

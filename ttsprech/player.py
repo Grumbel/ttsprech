@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from typing import Optional, Type
+from typing import Optional, Tuple, Type
 from types import TracebackType
 
 from threading import Thread
@@ -29,11 +29,13 @@ logger = logging.getLogger(__name__)
 
 class Player:
 
-    def __init__(self) -> None:
-        self.queue: Queue[Optional[str]] = Queue()
+    def __init__(self, total: int) -> None:
+        self.queue: Queue[Optional[Tuple[str, Optional[str]]]] = Queue()
         self.wave_obj: Optional[simpleaudio.WaveObject] = None
         self.play_obj: Optional[simpleaudio.PlayObject] = None
         self.thread = Thread(target=lambda: self.run())
+        self.idx = 0
+        self.total = total
 
     def __enter__(self) -> 'Player':
         self.thread.start()
@@ -48,19 +50,28 @@ class Player:
         self.thread.join()
         return None
 
-    def add(self, filename: str) -> None:
+    def add(self, text: str, filename: Optional[str]) -> None:
         logger.info(f"Player added {filename} to playlist")
-        self.queue.put(filename)
+        self.queue.put((text, filename))
 
     def run(self) -> None:
         logger.info("Player started")
+
+        progress_fmt = f"{{:{len(str(self.total))}d}}"
         while True:
-            wave_file = self.queue.get()
-            if wave_file is None:
+            item = self.queue.get()
+            if item is None:
                 break
-            self.wave_obj = simpleaudio.WaveObject.from_wave_file(wave_file)
-            self.play_obj = self.wave_obj.play()
-            self.play_obj.wait_done()
+
+            text, wave_file = item
+            self.idx += 1
+            print(("[" + progress_fmt + "/" + progress_fmt + "]  {}").format(
+                self.idx, self.total, text))
+
+            if wave_file is not None:
+                self.wave_obj = simpleaudio.WaveObject.from_wave_file(wave_file)
+                self.play_obj = self.wave_obj.play()
+                self.play_obj.wait_done()
 
 
 # EOF #
