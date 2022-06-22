@@ -24,7 +24,7 @@ import os
 import sys
 import tempfile
 import torch
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 from xdg.BaseDirectory import xdg_cache_home
 
 from ttsprech.player import Player
@@ -170,51 +170,46 @@ def setup_sentences(opts: argparse.Namespace, text: str) -> List[str]:
 
 
 def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str], output_dir: str) -> None:
-    if opts.output_dir is not None:
-        def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
-            logger.info(f"Processing {outfile}: {text!r}")
-            try:
-                audio_path = model.save_wav(audio_path=outfile,
-                                            text=text,
-                                            speaker=speaker,
-                                            sample_rate=opts.rate)
-                logger.info(f"Written: {audio_path}")
-            except Exception as err:
-                # ValueError() is thrown when the text only contains numbers
-                logger.error(f"failed to process {text!r}: {err!r}")
-                return (text, None)
-            finally:
-                return (text, outfile)
+    use_player = opts.output_dir is None
 
-        with ThreadPoolExecutor(os.cpu_count()) as executor:
-            for idx, sentence in enumerate(sentences):
-                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
-                executor.submit(generate_wave, sentence, outfile)
-    else:
-        files_to_cleanup = []
-        with Player() as player:
-            for idx, sentence in enumerate(sentences):
-                outfile = os.path.join(output_dir, f"{idx:06d}.wav")
-                logger.info(f"Processing {outfile}: {sentence!r}")
-                try:
-                    audio_path = model.save_wav(audio_path=outfile,
-                                                text=sentence,
-                                                speaker=speaker,
-                                                sample_rate=opts.rate)
-                    files_to_cleanup.append(audio_path)
-                    player.add(audio_path)
-                    logger.info(f"Written: {audio_path}")
-                except ValueError as err:
-                    # ValueError() is thrown when the sentence only contains numbers
-                    logger.error(f"failed to process {sentence!r}: {err!r}")
+    def generate_wave(text: str, outfile: str) -> Tuple[str, Optional[str]]:
+        logger.info(f"Processing {outfile}: {text!r}")
+        try:
+            audio_path = model.save_wav(audio_path=outfile,
+                                        text=text,
+                                        speaker=speaker,
+                                        sample_rate=opts.rate)
+            logger.info(f"Written: {audio_path}")
+        except Exception as err:
+            # ValueError() is thrown when the text only contains numbers
+            logger.error(f"failed to process {text!r}: {err!r}")
+            return (text, None)
+        finally:
+            return (text, outfile)
 
-        # cleanup
-        logger.info("cleaning up generated files")
-        for file in files_to_cleanup:
-            logger.info(f"removing '{file}'")
-            os.remove(file)
-        logger.info(f"removing directory '{output_dir}'")
-        os.rmdir(output_dir)
+    with ThreadPoolExecutor(os.cpu_count()) as executor:
+        output_files: List[Future[Tuple[str, Optional[str]]]] = []
+
+        for idx, sentence in enumerate(sentences):
+            outfile = os.path.join(output_dir, f"{idx:06d}.wav")
+            output_files.append(executor.submit(generate_wave, sentence, outfile))
+
+        if use_player:
+            files_to_cleanup: List[str] = []
+
+            with Player() as player:
+                for outfile_future in output_files:
+                    text, wavfile = outfile_future.result()
+                    files_to_cleanup.append(wavfile)
+                    player.add(wavfile)
+
+            # cleanup
+            logger.info("cleaning up generated files")
+            for file in files_to_cleanup:
+                logger.info(f"removing file '{file}'")
+                os.remove(file)
+            logger.info(f"removing directory '{output_dir}'")
+            os.rmdir(output_dir)
 
 
 def main(argv: List[str]) -> None:
