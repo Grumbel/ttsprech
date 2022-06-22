@@ -16,26 +16,6 @@
         };
       in rec {
         packages = flake-utils.lib.flattenTree rec {
-          silero = pkgs.python3Packages.buildPythonPackage rec {
-            pname = "silero";
-            version = "0.4.1";
-            src = silero-src;
-            patchPhase = ''
-            cat > setup.py <<EOF
-            from setuptools import setup
-            setup(use_scm_version=True)
-            EOF
-            '';
-            nativeBuildInputs = with pkgs; [
-              python3Packages.setuptools
-            ];
-            propagatedBuildInputs = with pkgs; [
-              #python3Packages.pytorch
-              python3Packages.torchaudio-bin
-              python3Packages.omegaconf
-            ];
-          };
-
           nltk_data_punkt = pkgs.fetchzip {
             url = "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt.zip";
             hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
@@ -61,7 +41,7 @@
               python3Packages.mypy
             ];
             propagatedBuildInputs = with pkgs; [
-              silero
+              python3Packages.torchaudio-bin
               python3Packages.nltk
               python3Packages.langdetect
               python3Packages.pyxdg
