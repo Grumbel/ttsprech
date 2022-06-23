@@ -34,25 +34,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs",
-        "silero-src": "silero-src"
-      }
-    },
-    "silero-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1655058837,
-        "narHash": "sha256-38A3lTDzZ6h7M7epA2tZiCr4jf7MSG/+eyeSevwfcrc=",
-        "owner": "snakers4",
-        "repo": "silero-models",
-        "rev": "555024c76503a8e52d68f829f3bb5352553c2fd7",
-        "type": "github"
-      },
-      "original": {
-        "owner": "snakers4",
-        "ref": "v0.4.1",
-        "repo": "silero-models",
-        "type": "github"
+        "nixpkgs": "nixpkgs"
       }
     }
   },
