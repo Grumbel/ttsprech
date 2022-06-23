@@ -29,7 +29,7 @@ import langdetect
 import nltk
 
 from ttsprech.player import Player
-from ttsprech.tokenize import replace_numbers_with_words
+from ttsprech.tokenize import prepare_text_for_tts
 from ttsprech.silero import (silero_model_from_file, silero_model_from_language,
                              silero_languages)
 
@@ -169,7 +169,7 @@ def setup_sentences(opts: argparse.Namespace, nltk_tokenize: Any, text: str) -> 
         return [text]
 
     sentences: List[str] = nltk_tokenize.sentences_from_text(text)
-    sentences = [replace_numbers_with_words(sentence) for sentence in sentences]
+    sentences = [prepare_text_for_tts(sentence) for sentence in sentences]
 
     return sentences
 

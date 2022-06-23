@@ -17,11 +17,48 @@
 
 from typing import List
 
+import re
 import logging
 import nltk
 from num2words import num2words
 
 logger = logging.getLogger(__name__)
+
+
+LETTER2WORD = {
+    "a": "aie",
+    "b": "bee",
+    "c": "see",
+    "d": "dee",
+    "e": "eee",
+    "f": "eff",
+    "g": "gee",
+    "h": "eigch",
+    "i": "I",
+    "j": "jei",
+    "k": "kay",
+    "l": "el",
+    "m": "em",
+    "n": "en",
+    "o": "oe",
+    "p": "peee",
+    "q": "kjuu",
+    "r": "arr",
+    "s": "es",
+    "t": "tee",
+    "u": "yuu",
+    "v": "vee",
+    "w": "doubl-yuu",
+    "x": "eks",
+    "y": "why",
+    "z": "zed",
+}
+
+
+def prepare_text_for_tts(text: str) -> str:
+    text = replace_numbers_with_words(text)
+    text = replace_uppercase_with_words(text)
+    return text
 
 
 def replace_numbers_with_words(text: str) -> str:
@@ -33,6 +70,19 @@ def replace_numbers_with_words(text: str) -> str:
             result.append(num2words(float(token)))
         except ValueError:
             result.append(token)
+
+    return ' '.join(result)
+
+
+def replace_uppercase_with_words(text: str) -> str:
+    words = re.split(r'\s', text)
+    result: List[str] = []
+    for word in words:
+        if re.match(r'^[A-Z]+$', word):  # uppercase
+            for character in word:
+                result.append(LETTER2WORD[character.lower()])
+        else:
+            result.append(word)
 
     return ' '.join(result)
 
