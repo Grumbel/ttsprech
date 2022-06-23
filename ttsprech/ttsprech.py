@@ -82,7 +82,7 @@ def setup_nltk_tokenize(opts: argparse.Namespace) -> Any:
     else:
         logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
         download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
-        nltk.download(download_dir=download_dir, quiet=opts.verbose,
+        nltk.download(download_dir=download_dir, quiet=not opts.verbose,
                       info_or_id="punkt", raise_on_error=True)
         nltk_data_punkt_file = os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle')
 
