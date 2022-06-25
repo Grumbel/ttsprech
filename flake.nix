@@ -24,6 +24,7 @@
               substituteInPlace ttsprech/ttsprech.py --replace \
                 "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}"
             '';
+            doCheck = false;
             checkPhase = ''
               runHook preCheck
               mypy -p ttsprech
@@ -50,6 +51,10 @@
             ];
           };
 
+          ttsprech-check = ttsprech.override {
+            doCheck = true;
+          };
+
           default = ttsprech;
         };
 
@@ -60,10 +65,11 @@
           default = ttsprech;
         };
 
-        devShells = {
-          default = pkgs.mkShell {
-            inputsFrom = [ packages.default ];
+        devShells = rec {
+          ttsprech = pkgs.mkShell {
+            inputsFrom = [ packages.ttsprech-check ];
           };
+          default = ttsprech;
         };
       }
     );
