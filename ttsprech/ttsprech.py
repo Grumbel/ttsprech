@@ -32,6 +32,8 @@ from ttsprech.player import Player
 from ttsprech.tokenize import prepare_text_for_tts
 from ttsprech.silero import (silero_model_from_file, silero_model_from_language,
                              silero_languages)
+from ttsprech.coquitts import coquitts_model_from_language
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,8 @@ def parse_args(args: List[str]) -> argparse.Namespace:
                         help="Be more verbose")
     parser.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                         help="Convert content of FILE to wav")
+    parser.add_argument("-e", "--engine", metavar="ENGINE", type=str, default="silero",
+                        help="Select the TTS engine to use (coquitts, silero)")
     parser.add_argument("--ssml", action='store_true', default=False,
                         help="Interpret text input as SSML")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
@@ -168,8 +172,7 @@ def setup_sentences(opts: argparse.Namespace, nltk_tokenize: Any, text: str) -> 
     if opts.ssml:
         return [text]
 
-    sentences: List[str] = nltk_tokenize.sentences_from_text(text)
-    sentences = [prepare_text_for_tts(sentence) for sentence in sentences]
+    sentences = prepare_text_for_tts(nltk_tokenize, text)
 
     return sentences
 
@@ -179,6 +182,10 @@ def setup_max_workers(opts: argparse.Namespace) -> int:
     # them, so divide by 2 instead of 4, to approximate the thread
     # count.
     max_workers: int
+
+    if opts.engine == "coquitts":
+        logger.error("forcing max_workers to 1, coquitts isn't thread safe")
+        return 1
 
     if opts.threads is not None:
         max_workers = max(1, opts.threads // 2)
@@ -257,7 +264,14 @@ def main(argv: List[str]) -> None:
     output_dir = setup_output_dir(opts)
     text = setup_text(opts)
     language = setup_language(text, opts)
-    model = setup_model(opts, language, cache_dir)
+
+    if opts.engine == "coquitts":
+        model = coquitts_model_from_language("en")
+    elif opts.engine == "silero":
+        model = setup_model(opts, language, cache_dir)
+    else:
+        raise RuntimeError("unknown engine: '{opts.engine}'")
+
     speaker = setup_speaker(opts, model)
     sentences = setup_sentences(opts, nltk_tokenize, text)
     max_workers = setup_max_workers(opts)

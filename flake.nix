@@ -47,7 +47,8 @@
               num2words
               pyxdg
               simpleaudio
-              pytorch
+            ] ++ [
+              pkgs.tts
             ];
           };
 
