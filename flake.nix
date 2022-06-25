@@ -46,7 +46,7 @@
               num2words
               pyxdg
               simpleaudio
-              torchaudio-bin
+              pytorch
             ];
           };
         };
