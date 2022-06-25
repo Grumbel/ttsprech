@@ -38,11 +38,33 @@ LANGUAGE_MODEL_URLS = {
 }
 
 
+class SileroModel:
+
+    def __init__(self, model: Any):
+        self._model = model
+
+    @property
+    def speakers(self) -> List[str]:
+        return list(self._model.speakers)
+
+    def save_wav(self, outfile: str, text: str, speaker: str, sample_rate: int, ssml: bool) -> None:
+        if ssml:
+            self._model.save_wav(audio_path=outfile,
+                                 ssml_text=text,
+                                 speaker=speaker,
+                                 sample_rate=sample_rate)
+        else:
+            self._model.save_wav(audio_path=outfile,
+                                 text=text,
+                                 speaker=speaker,
+                                 sample_rate=sample_rate)
+
+
 def silero_languages() -> List[str]:
     return list(LANGUAGE_MODEL_URLS.keys())
 
 
-def silero_model_from_file(model_file: str) -> Any:
+def silero_model_from_file(model_file: str) -> SileroModel:
     device = torch.device('cpu')
     torch.set_num_threads(4)  # more than 4 does not provide a speedup
 
@@ -54,10 +76,10 @@ def silero_model_from_file(model_file: str) -> Any:
     logger.info(f"Languages: {' '.join(LANGUAGE_MODEL_URLS.keys())}")
     logger.info(f"  peakers: {' '.join(model.speakers)}")
 
-    return model
+    return SileroModel(model)
 
 
-def silero_model_from_language(language: str, cache_dir: str) -> Any:
+def silero_model_from_language(language: str, cache_dir: str) -> SileroModel:
     if language not in LANGUAGE_MODEL_URLS:
         raise RuntimeError(f"unknown language '{language}', must be one of:\n  "
                            f"{' '.join(LANGUAGE_MODEL_URLS.keys())}")

@@ -188,30 +188,26 @@ def setup_max_workers(opts: argparse.Namespace) -> int:
     return max_workers
 
 
+def save_wav(outfile: str, model: Any, text: str, speaker: str, sample_rate: int, ssml: bool) -> Optional[str]:
+    logger.info(f"Processing {outfile}: {text!r}")
+    try:
+        model.save_wav(outfile=outfile,
+                       text=text,
+                       speaker=speaker,
+                       sample_rate=sample_rate,
+                       ssml=ssml)
+        logger.info(f"Written: {outfile}")
+    except ValueError as err:
+        # ValueError() is thrown when the text only contains numbers
+        logger.error(f"failed to process {text!r}: {err!r}")
+        return None
+
+    return outfile
+
+
 def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str],
         output_dir: str, max_workers: int) -> None:
     use_player = opts.output_dir is None
-
-    def generate_wave(text: str, outfile: str) -> Optional[str]:
-        logger.info(f"Processing {outfile}: {text!r}")
-        try:
-            if opts.ssml:
-                audio_path = model.save_wav(audio_path=outfile,
-                                            ssml_text=text,
-                                            speaker=speaker,
-                                            sample_rate=opts.rate)
-            else:
-                audio_path = model.save_wav(audio_path=outfile,
-                                            text=text,
-                                            speaker=speaker,
-                                            sample_rate=opts.rate)
-            logger.info(f"Written: {audio_path}")
-        except ValueError as err:
-            # ValueError() is thrown when the text only contains numbers
-            logger.error(f"failed to process {text!r}: {err!r}")
-            return None
-
-        return outfile
 
     with ThreadPoolExecutor(max_workers) as executor:
         output_files: List[Tuple[str, Future[Optional[str]]]] = []
@@ -225,7 +221,9 @@ def run(opts: argparse.Namespace, model: Any, speaker: str, sentences: List[str]
                 output_files.append((sentence, future))
             else:
                 outfile = os.path.join(output_dir, f"{idx + 1:06d}.wav")
-                output_files.append((sentence, executor.submit(generate_wave, sentence, outfile)))
+                task = executor.submit(save_wav,
+                                       outfile, model, sentence, speaker, opts.rate, opts.ssml)
+                output_files.append((sentence, task))
 
         if use_player:
             files_to_cleanup: List[str] = []
