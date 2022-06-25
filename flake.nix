@@ -49,10 +49,21 @@
               pytorch
             ];
           };
+
+          default = ttsprech;
         };
-        defaultPackage = packages.ttsprech;
-        devShell = pkgs.mkShell {
-          inputsFrom = [ defaultPackage ];
+
+        apps = rec {
+          ttsprech = flake-utils.lib.mkApp {
+            drv = packages.ttsprech;
+          };
+          default = ttsprech;
+        };
+
+        devShells = {
+          default = pkgs.mkShell {
+            inputsFrom = [ packages.default ];
+          };
         };
       }
     );
