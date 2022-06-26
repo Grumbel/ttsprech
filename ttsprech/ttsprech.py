@@ -32,7 +32,7 @@ from ttsprech.player import Player
 from ttsprech.tokenize import prepare_text_for_tts
 from ttsprech.silero import (silero_model_from_file, silero_model_from_language,
                              silero_languages)
-from ttsprech.coquitts import coquitts_model_from_language
+from ttsprech.coqui import coqui_model_from_language
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     parser.add_argument("-f", "--file", metavar="FILE", type=str, default=None,
                         help="Convert content of FILE to wav")
     parser.add_argument("-e", "--engine", metavar="ENGINE", type=str, default="silero",
-                        help="Select the TTS engine to use (coquitts, silero)")
+                        help="Select the TTS engine to use (coqui, silero)")
     parser.add_argument("--ssml", action='store_true', default=False,
                         help="Interpret text input as SSML")
     parser.add_argument("-m", "--model", metavar="FILE", type=str, default=None,
@@ -183,8 +183,8 @@ def setup_max_workers(opts: argparse.Namespace) -> int:
     # count.
     max_workers: int
 
-    if opts.engine == "coquitts":
-        logger.error("forcing max_workers to 1, coquitts isn't thread safe")
+    if opts.engine == "coqui":
+        logger.error("forcing max_workers to 1, coqui isn't thread safe")
         return 1
 
     if opts.threads is not None:
@@ -265,8 +265,8 @@ def main(argv: List[str]) -> None:
     text = setup_text(opts)
     language = setup_language(text, opts)
 
-    if opts.engine == "coquitts":
-        model = coquitts_model_from_language("en")
+    if opts.engine == "coqui":
+        model = coqui_model_from_language("en")
     elif opts.engine == "silero":
         model = setup_model(opts, language, cache_dir)
     else:

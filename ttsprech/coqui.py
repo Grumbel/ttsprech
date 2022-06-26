@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from TTS.utils.synthesizer import Synthesizer
 
 
-class CoquittsModel:
+class CoquiModel:
 
     def __init__(self, synthesizers: List[Any]) -> None:
         self._synthesizers = synthesizers
@@ -40,12 +40,15 @@ class CoquittsModel:
         return [""]  # cast(List[str], self._synthesizer.tts_model.language_manager.ids)
 
     def save_wav(self, outfile: str, text: str, speaker: str, sample_rate: int, ssml: bool) -> None:
+        del sample_rate
+        del ssml
+
         lock, synthesizer = self._find_synth()
 
         with lock:
             wav: List[int] = synthesizer.tts(
                 text=text,
-                speaker_name="",
+                speaker_name=speaker,
                 language_name="",
             )
             synthesizer.save_wav(wav, outfile)
@@ -58,9 +61,9 @@ class CoquittsModel:
             time.sleep(0.1)
 
 
-def coquitts_model_from_language(language: str) -> CoquittsModel:
+def coqui_model_from_language(language: str) -> CoquiModel:
     # this takes a considerable amount of time to load, so load it
-    # only when coquitts is actually used
+    # only when coqui is actually used
     import TTS
     from TTS.utils.manage import ModelManager
     from TTS.utils.synthesizer import Synthesizer
@@ -70,7 +73,7 @@ def coquitts_model_from_language(language: str) -> CoquittsModel:
     manager.list_models()
 
     model_name = "tts_models/en/ljspeech/tacotron2-DDC"
-
+    model_name = "tts_models/en/sam/tacotron-DDC"
     model_path, config_path, model_item = manager.download_model(model_name)
     vocoder_name = model_item["default_vocoder"]
     vocoder_path, vocoder_config_path, _ = manager.download_model(vocoder_name)
@@ -93,7 +96,7 @@ def coquitts_model_from_language(language: str) -> CoquittsModel:
                                 use_cuda)
                     for _ in range(4)]
 
-    return CoquittsModel(synthesizers)
+    return CoquiModel(synthesizers)
 
 
 # EOF #
