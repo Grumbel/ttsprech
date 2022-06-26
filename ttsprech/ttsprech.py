@@ -183,10 +183,6 @@ def setup_max_workers(opts: argparse.Namespace) -> int:
     # count.
     max_workers: int
 
-    if opts.engine == "coqui":
-        logger.error("forcing max_workers to 1, coqui isn't thread safe")
-        return 1
-
     if opts.threads is not None:
         max_workers = max(1, opts.threads // 2)
     else:
