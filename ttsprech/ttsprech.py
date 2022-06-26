@@ -262,7 +262,7 @@ def main(argv: List[str]) -> None:
     language = setup_language(text, opts)
 
     if opts.engine == "coqui":
-        model = coqui_model_from_language("en")
+        model = coqui_model_from_language(language)
     elif opts.engine == "silero":
         model = setup_model(opts, language, cache_dir)
     else:

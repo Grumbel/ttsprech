@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from typing import Any, Dict, List, Tuple, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
-import time
+import logging
 from threading import Lock
 from pathlib import Path
 
@@ -25,12 +25,15 @@ if TYPE_CHECKING:
     from TTS.utils.synthesizer import Synthesizer
 
 
+logger = logging.getLogger(__name__)
+
+
 class CoquiModel:
 
     def __init__(self, synthesizer_args: Dict[str, Any]) -> None:
         self._synthesizer_args = synthesizer_args
-        self._synthesizers = []
-        self._locks = []
+        self._synthesizers: List[Any] = []
+        self._locks: List[Lock] = []
         self._self_lock = Lock()
 
     @property
@@ -61,20 +64,37 @@ class CoquiModel:
         from TTS.utils.synthesizer import Synthesizer
 
         with self._self_lock:
-            for idx, (lock, synthesizer) in enumerate(zip(self._locks, self._synthesizers)):
+            for lock, synthesizer in zip(self._locks, self._synthesizers):
                 if not lock.locked():
                     return lock, synthesizer
-            else:
-                synthesizer = Synthesizer(**self._synthesizer_args)
-                lock = Lock()
-                self._synthesizers.append(synthesizer)
-                self._locks.append(lock)
-                return lock, synthesizer
+
+            synthesizer = Synthesizer(**self._synthesizer_args)
+            lock = Lock()
+            self._synthesizers.append(synthesizer)
+            self._locks.append(lock)
+            return lock, synthesizer
 
 
 def coqui_model_from_language(language: str) -> CoquiModel:
-    model_name = "tts_models/en/ljspeech/tacotron2-DDC"
-    # model_name = "tts_models/en/sam/tacotron-DDC"
+    # this takes a considerable amount of time to load, so load it
+    # only when coqui is actually used
+    import TTS
+    from TTS.utils.manage import ModelManager
+
+    models_json = Path(TTS.__file__).parent / ".models.json"
+    manager = ModelManager(models_json)
+    models = manager.list_tts_models()
+
+    if language == "":
+        model_name = "tts_models/en/ek1/tacotron2"
+    else:
+        for model_name in models:
+            if model_name.startswith(language):
+                model_name = f"tts_models/{model_name}"
+                break
+        else:
+            raise RuntimeError(f"failed to find model for language {language}")
+
     return coqui_model_from_name(model_name)
 
 
