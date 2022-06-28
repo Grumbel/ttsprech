@@ -27,17 +27,20 @@
             doCheck = false;
             checkPhase = ''
               runHook preCheck
-              mypy -p ttsprech
               flake8
+              pyright ttsprech
+              mypy -p ttsprech
               pylint ttsprech
               python -m unittest discover
               runHook postCheck
             '';
-            checkInputs =  with pythonPackages; [
+            checkInputs = (with pkgs; [
+              pyright
+            ]) ++ (with pythonPackages; [
               mypy
               flake8
               pylint
-            ];
+            ]);
             nativeBuildInputs = with pythonPackages; [
               setuptools
             ];
