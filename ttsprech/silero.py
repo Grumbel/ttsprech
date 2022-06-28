@@ -69,7 +69,7 @@ def silero_model_from_file(model_file: str) -> SileroModel:
     torch.set_num_threads(4)  # more than 4 does not provide a speedup
 
     logger.info(f"loading silero model: {model_file}")
-    model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")
+    model = torch.package.PackageImporter(model_file).load_pickle("tts_models", "model")  # type: ignore
     model.to(device)
 
     logger.info(f"    Model: {model_file}")
