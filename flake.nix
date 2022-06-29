@@ -16,13 +16,19 @@
             hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
           };
 
+          silero-model-v3_en = pkgs.fetchurl {
+            url = "https://models.silero.ai/models/tts/en/v3_en.pt";
+            hash = "sha256-ArcQNNnxO8QAEZUBe6ydsca7YRXgP+pSmD6KvP8TtmU=";
+          };
+
           ttsprech = pythonPackages.buildPythonPackage rec {
             pname = "ttsprech";
             version = "0.0.0";
             src = ./.;
             patchPhase = ''
-              substituteInPlace ttsprech/ttsprech.py --replace \
-                "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}"
+              substituteInPlace ttsprech/ttsprech.py \
+                --replace "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}" \
+                --replace "SILERO_MODEL_FILE_PLACEHOLDER" "${silero-model-v3_en}"
             '';
             doCheck = false;
             checkPhase = ''

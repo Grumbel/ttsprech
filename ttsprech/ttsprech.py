@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
 
+SILERO_MODEL_FILE = "SILERO_MODEL_FILE_PLACEHOLDER"
+
 
 def parse_args(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Text to Speech")
@@ -147,6 +149,8 @@ def setup_model(opts: argparse.Namespace, language: str, cache_dir: str) -> Any:
 
     if opts.model is not None:
         model = silero_model_from_file(opts.model)
+    elif language == "en" and os.path.isfile(SILERO_MODEL_FILE):
+        model = silero_model_from_file(SILERO_MODEL_FILE)
     else:
         model = silero_model_from_language(language, cache_dir)
 
