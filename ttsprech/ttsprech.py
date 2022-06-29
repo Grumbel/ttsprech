@@ -264,7 +264,10 @@ def main(argv: List[str]) -> None:
     if opts.engine == "coqui":
         model = coqui_model_from_language(language)
     elif opts.engine == "silero":
-        model = setup_model(opts, language, cache_dir)
+        silero_cachedir = os.path.join(cache_dir, "silero")
+        if not os.path.isdir(silero_cachedir):
+            os.mkdir(silero_cachedir)
+        model = setup_model(opts, language, silero_cachedir)
     else:
         raise RuntimeError("unknown engine: '{opts.engine}'")
 
