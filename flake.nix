@@ -10,10 +10,10 @@
         pkgs = nixpkgs.legacyPackages.${system};
         pythonPackages = pkgs.python3Packages;
       in rec {
-        packages = flake-utils.lib.flattenTree rec {
+        packages = rec {
           nltk_data_punkt = pkgs.fetchzip {
             url = "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt.zip";
-            hash = "sha256-zAbLxd0h/XYrLSSxevEHLsOAydT3VHnRO7QW2Q7abIQ=";
+            hash = "sha256-SKZu26K17qMUg7iCFZey0GTECUZ+sTTrF/pqeEgJCos=";
           };
 
           silero-model-v3_en = pkgs.fetchurl {
