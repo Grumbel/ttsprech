@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-22.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -11,6 +11,8 @@
         pythonPackages = pkgs.python3Packages;
       in rec {
         packages = rec {
+          default = ttsprech;
+
           nltk_data_punkt = pkgs.fetchzip {
             url = "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt.zip";
             hash = "sha256-SKZu26K17qMUg7iCFZey0GTECUZ+sTTrF/pqeEgJCos=";
@@ -24,13 +26,17 @@
           ttsprech = pythonPackages.buildPythonPackage rec {
             pname = "ttsprech";
             version = "0.0.0";
+
             src = ./.;
+
             patchPhase = ''
               substituteInPlace ttsprech/ttsprech.py \
                 --replace "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}" \
                 --replace "SILERO_MODEL_FILE_PLACEHOLDER" "${silero-model-v3_en}"
             '';
+
             doCheck = false;
+
             checkPhase = ''
               runHook preCheck
               flake8
@@ -40,6 +46,7 @@
               python -m unittest discover
               runHook postCheck
             '';
+
             checkInputs = (with pkgs; [
               pyright
             ]) ++ (with pythonPackages; [
@@ -47,9 +54,11 @@
               flake8
               pylint
             ]);
+
             nativeBuildInputs = with pythonPackages; [
               setuptools
             ];
+
             propagatedBuildInputs = with pythonPackages; [
               langdetect
               nltk
@@ -64,22 +73,20 @@
           ttsprech-check = ttsprech.override {
             doCheck = true;
           };
-
-          default = ttsprech;
         };
 
         apps = rec {
+          default = ttsprech;
           ttsprech = flake-utils.lib.mkApp {
             drv = packages.ttsprech;
           };
-          default = ttsprech;
         };
 
         devShells = rec {
+          default = ttsprech;
           ttsprech = pkgs.mkShell {
             inputsFrom = [ packages.ttsprech-check ];
           };
-          default = ttsprech;
         };
       }
     );
