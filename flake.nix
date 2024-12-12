@@ -70,8 +70,7 @@
               num2words
               pyxdg
               simpleaudio
-            ] ++ [
-              pkgs.tts
+              torch
             ];
           };
 
