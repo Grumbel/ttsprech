@@ -38,7 +38,7 @@ from ttsprech.coqui import coqui_model_from_language
 logger = logging.getLogger(__name__)
 
 
-NLTK_DATA_PUNKT_DIR = "NLTK_DATA_PUNKT_DIR_PLACEHOLDER"
+NLTK_DATA_DIRS = "NLTK_DATA_DIRS_PLACEHOLDER"
 
 SILERO_MODEL_FILE = "SILERO_MODEL_FILE_PLACEHOLDER"
 
@@ -83,18 +83,21 @@ def setup_cachedir() -> str:
 
 
 def setup_nltk_tokenize(opts: argparse.Namespace) -> Any:
-    if os.path.isdir(NLTK_DATA_PUNKT_DIR):
-        nltk_data_punkt_file = os.path.join(NLTK_DATA_PUNKT_DIR, 'PY3/english.pickle')
+    if NLTK_DATA_DIRS != "NLTK_DATA_DIRS_PLACEHOLDER":
+        for d in NLTK_DATA_DIRS.split(":"):
+            nltk.data.path.append(d)
     else:
-        logging.info("NLTK_DATA_PUNKT_DIR not set, downloading it instead")
+        logging.info("NLTK_DATA_DIRS not set, downloading it instead")
         download_dir = os.path.join(xdg_cache_home, "ttsprech", "nltk")
+        nltk.data.path.append(download_dir)
         nltk.download(download_dir=download_dir, quiet=not opts.verbose,
                       info_or_id="punkt", raise_on_error=True)
-        nltk_data_punkt_file = os.path.join(download_dir, 'tokenizers/punkt/PY3/english.pickle')
+        nltk.download(download_dir=download_dir, quiet=not opts.verbose,
+                      info_or_id="punkt_tab", raise_on_error=True)
 
-    logger.info(f"loading NLTK model: {nltk_data_punkt_file}")
-    tokenize = nltk.data.load(nltk_data_punkt_file)
-
+    nltk_data_file = 'tokenizers/punkt/english.pickle'
+    logger.info(f"loading NLTK model: {nltk_data_file}")
+    tokenize = nltk.data.load(nltk_data_file)
     return tokenize
 
 

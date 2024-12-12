@@ -18,6 +18,11 @@
             hash = "sha256-SKZu26K17qMUg7iCFZey0GTECUZ+sTTrF/pqeEgJCos=";
           };
 
+          nltk_data_punkt_tab = pkgs.fetchzip {
+            url = "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt_tab.zip";
+            hash = "sha256-kZmznOzjZt9CMcHdf+hZZ4fst6rczzdaQMNlak4rrio=";
+          };
+
           silero-model-v3_en = pkgs.fetchurl {
             url = "https://models.silero.ai/models/tts/en/v3_en.pt";
             hash = "sha256-ArcQNNnxO8QAEZUBe6ydsca7YRXgP+pSmD6KvP8TtmU=";
@@ -31,7 +36,7 @@
 
             patchPhase = ''
               substituteInPlace ttsprech/ttsprech.py \
-                --replace "NLTK_DATA_PUNKT_DIR_PLACEHOLDER" "${nltk_data_punkt}" \
+                --replace "NLTK_DATA_DIRS_PLACEHOLDER" "${nltk_data_punkt}:${nltk_data_punkt_tab}" \
                 --replace "SILERO_MODEL_FILE_PLACEHOLDER" "${silero-model-v3_en}"
             '';
 
