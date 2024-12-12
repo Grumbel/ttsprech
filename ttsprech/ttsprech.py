@@ -276,7 +276,7 @@ def main(argv: List[str]) -> None:
             os.mkdir(silero_cachedir)
         model = setup_model(opts, language, silero_cachedir)
     else:
-        raise RuntimeError("unknown engine: '{opts.engine}'")
+        raise RuntimeError(f"unknown engine: '{opts.engine}'")
 
     speaker = setup_speaker(opts, model)
     sentences = setup_sentences(opts, nltk_tokenize, text)
