@@ -57,7 +57,11 @@ LETTER2WORD = {
 
 def prepare_text_for_tts(nltk_tokenize: Any, text: str) -> List[str]:
     text = replace_numbers_with_words(text)
-    text = replace_uppercase_with_words(text)
+
+    # FIXME: This causes more problems than it fixes. Need better way
+    # to detect acronyms.
+    # text = replace_uppercase_with_words(text)
+
     text = text.replace(",", ".")
 
     sentences: List[str] = nltk_tokenize.sentences_from_text(text)
